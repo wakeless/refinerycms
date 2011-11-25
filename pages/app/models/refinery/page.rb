@@ -13,23 +13,6 @@ module Refinery
     seo_fields = ::SeoMeta.attributes.keys.map{|a| [a, :"#{a}="]}.flatten
     delegate *(seo_fields << {:to => :translation})
 
-    after_save proc {|m| m.translation.save}
-
-    # Wrap up the logic of finding the pages based on the translations table.
-    def self.with_globalize(conditions = {})
-      conditions = {:locale => Globalize.locale}.merge(conditions)
-      globalized_conditions = {}
-      conditions.keys.each do |key|
-        if (translated_attribute_names.map(&:to_s) | %w(locale)).include?(key.to_s)
-          globalized_conditions["#{self.translation_class.table_name}.#{key}"] = conditions.delete(key)
-        end
-      end
-      # A join implies readonly which we don't really want.
-      joins(:translations).where(globalized_conditions).where(conditions).readonly(false)
-    end
-
-    before_create :ensure_locale, :if => proc { |c| ::Refinery.i18n_enabled? }
-
     attr_accessible :id, :deletable, :link_url, :menu_match, :meta_keywords,
                     :skip_to_first_child, :position, :show_in_menu, :draft,
                     :parts_attributes, :browser_title, :meta_description,
@@ -40,24 +23,21 @@ module Refinery
     validates :title, :presence => true
 
     # Docs for acts_as_nested_set https://github.com/collectiveidea/awesome_nested_set
-    acts_as_nested_set :dependent => :destroy # rather than :delete_all
+    # rather than :delete_all we want :destroy
+    unless $rake_assets_precompiling
+      acts_as_nested_set :dependent => :destroy
 
-    # Docs for friendly_id http://github.com/norman/friendly_id
-    has_friendly_id :custom_slug_or_title, :use_slug => true,
-                    :default_locale => (::Refinery::I18n.default_frontend_locale rescue :en),
-                    :reserved_words => %w(index new session login logout users refinery admin images wymiframe),
-                    :approximate_ascii => ::Refinery::Setting.find_or_set(:approximate_ascii, false, :scoping => "pages"),
-                    :strip_non_ascii => ::Refinery::Setting.find_or_set(:strip_non_ascii, false, :scoping => "pages")
-
-    def custom_slug_or_title
-      if custom_slug.present?
-        custom_slug
-      elsif menu_title.present?
-        menu_title
-      else
-        title
-      end
+      # Docs for friendly_id http://github.com/norman/friendly_id
+      has_friendly_id :custom_slug_or_title, :use_slug => true,
+                      :default_locale => (::Refinery::I18n.default_frontend_locale rescue :en),
+                      :reserved_words => %w(index new session login logout users refinery admin images wymiframe),
+                      :approximate_ascii => ::Refinery::Setting.find_or_set(:approximate_ascii, false, :scoping => "pages"),
+                      :strip_non_ascii => ::Refinery::Setting.find_or_set(:strip_non_ascii, false, :scoping => "pages")
     end
+
+    # Docs for acts_as_indexed http://github.com/dougal/acts_as_indexed
+    acts_as_indexed :fields => [:title, :meta_keywords, :meta_description,
+                                :menu_title, :browser_title, :all_page_part_content]
 
     has_many :parts,
              :foreign_key => :refinery_page_id,
@@ -69,10 +49,8 @@ module Refinery
 
     accepts_nested_attributes_for :parts, :allow_destroy => true
 
-    # Docs for acts_as_indexed http://github.com/dougal/acts_as_indexed
-    acts_as_indexed :fields => [:title, :meta_keywords, :meta_description,
-                                :menu_title, :browser_title, :all_page_part_content]
-
+    before_save { |m| m.translation.save }
+    before_create :ensure_locale, :if => proc { |c| ::Refinery.i18n_enabled? }
     before_destroy :deletable?
     after_save :reposition_parts!, :invalidate_cached_urls, :expire_page_caching
     after_update :invalidate_cached_urls
@@ -111,6 +89,65 @@ module Refinery
       pages
     }
 
+    class << self
+      # Wrap up the logic of finding the pages based on the translations table.
+      def with_globalize(conditions = {})
+        conditions = {:locale => Globalize.locale}.merge(conditions)
+        globalized_conditions = {}
+        conditions.keys.each do |key|
+          if (translated_attribute_names.map(&:to_s) | %w(locale)).include?(key.to_s)
+            globalized_conditions["#{self.translation_class.table_name}.#{key}"] = conditions.delete(key)
+          end
+        end
+        # A join implies readonly which we don't really want.
+        joins(:translations).where(globalized_conditions).where(conditions).readonly(false)
+      end
+
+      # Accessor to find out the default page parts created for each new page
+      def default_parts
+        ::Refinery::Setting.find_or_set(:default_page_parts, ["Body", "Side Body"])
+      end
+
+      # Wraps up all the checks that we need to do to figure out whether
+      # the current frontend locale is different to the current one set by ::I18n.locale.
+      # This terminates in a false if i18n engine is not defined or enabled.
+      def different_frontend_locale?
+        ::Refinery.i18n_enabled? && ::Refinery::I18n.current_frontend_locale != ::I18n.locale
+      end
+
+      # Override this method to change which columns you want to select to render your menu.
+      # title and menu_title are always retrieved so omit these.
+      def menu_columns
+        %w(id depth parent_id lft rgt link_url menu_match)
+      end
+
+      # Returns how many pages per page should there be when paginating pages
+      def per_page(dialog = false)
+        dialog ? Pages.pages_per_dialog : Pages.pages_per_admin_index
+      end
+
+      def expire_page_caching
+        begin
+          Rails.cache.delete_matched(/.*pages.*/)
+        rescue NotImplementedError
+          Rails.cache.clear
+          warn "**** [REFINERY] The cache store you are using is not compatible with Rails.cache#delete_matched - clearing entire cache instead ***"
+        ensure
+          return true # so that other callbacks process.
+        end
+      end
+    end
+
+    def custom_slug_or_title
+      if custom_slug.present?
+        custom_slug
+      elsif menu_title.present?
+        menu_title
+      else
+        title
+      end
+    end
+
     # Am I allowed to delete this page?
     # If a link_url is set we don't want to break the link so we don't allow them to delete
     # If deletable is set to false then we don't allow this page to be deleted. These are often Refinery system pages
@@ -139,7 +176,7 @@ module Refinery
         puts "set .deletable to true" unless deletable
       end
 
-      return false
+      false
     end
 
     # If you want to destroy a page that is set to be not deletable this is the way to do it.
@@ -196,7 +233,7 @@ module Refinery
     end
 
     def url_marketable
-      # :id => nil is important to prevent any other params[:id] from interfering with this route.
+      # except(:id) is important to prevent any other params[:id] from interfering with this route.
       url_normal.merge(:path => nested_url).except(:id)
     end
 
@@ -281,42 +318,6 @@ module Refinery
       }
     end
 
-    class << self
-      # Accessor to find out the default page parts created for each new page
-      def default_parts
-        ::Refinery::Setting.find_or_set(:default_page_parts, ["Body", "Side Body"])
-      end
-
-      # Wraps up all the checks that we need to do to figure out whether
-      # the current frontend locale is different to the current one set by ::I18n.locale.
-      # This terminates in a false if i18n engine is not defined or enabled.
-      def different_frontend_locale?
-        ::Refinery.i18n_enabled? && ::Refinery::I18n.current_frontend_locale != ::I18n.locale
-      end
-
-      # Override this method to change which columns you want to select to render your menu.
-      # title and menu_title are always retrieved so omit these.
-      def menu_columns
-        %w(id depth parent_id lft rgt link_url menu_match)
-      end
-
-      # Returns how many pages per page should there be when paginating pages
-      def per_page(dialog = false)
-        dialog ? Pages::Options.pages_per_dialog : Pages::Options.pages_per_admin_index
-      end
-
-      def expire_page_caching
-        begin
-          Rails.cache.delete_matched(/.*pages.*/)
-        rescue NotImplementedError
-          Rails.cache.clear
-          warn "**** [REFINERY] The cache store you are using is not compatible with Rails.cache#delete_matched - clearing entire cache instead ***"
-        ensure
-          return true # so that other callbacks process.
-        end
-      end
-    end
-
     # Accessor method to get a page part from a page.
     # Example:
     #
@@ -324,15 +325,23 @@ module Refinery
     #
     # Will return the body page part of the first page.
     def content_for(part_title)
+      part_with_title(part_title).try(:body)
+    end
+
+    # Accessor method to get a page part object from a page.
+    # Example:
+    #
+    #    ::Refinery::Page.first.part_with_title(:body)
+    #
+    # Will return the Refinery::PagePart object with that title using the first page.
+    def part_with_title(part_title)
       # self.parts is usually already eager loaded so we can now just grab
       # the first element matching the title we specified.
-      part = self.parts.detect do |part|
+      self.parts.detect do |part|
         part.title.present? and # protecting against the problem that occurs when have nil title
         part.title == part_title.to_s or
         part.title.downcase.gsub(" ", "_") == part_title.to_s.downcase.gsub(" ", "_")
       end
-
-      part.try(:body)
     end
 
     # In the admin area we use a slightly different title to inform the which pages are draft or hidden pages
@@ -352,7 +361,7 @@ module Refinery
 
     # Used to index all the content on this page so it can be easily searched.
     def all_page_part_content
-      parts.collect {|p| p.body}.join(" ")
+      parts.map(&:body).join(" ")
     end
 
     ##
@@ -369,26 +378,26 @@ module Refinery
       sluggified
     end
 
-  private
+    private
 
-    def invalidate_cached_urls
-      return true unless ::Refinery::Pages.use_marketable_urls?
+      def invalidate_cached_urls
+        return true unless ::Refinery::Pages.use_marketable_urls?
 
-      [self, children].flatten.each do |page|
-        Rails.cache.delete(page.url_cache_key)
-        Rails.cache.delete(page.path_cache_key)
+        [self, children].flatten.each do |page|
+          Rails.cache.delete(page.url_cache_key)
+          Rails.cache.delete(page.path_cache_key)
+        end
       end
-    end
-    alias_method :invalidate_child_cached_url, :invalidate_cached_urls
+      alias_method :invalidate_child_cached_url, :invalidate_cached_urls
 
-    def ensure_locale
-      unless self.translations.present?
-        self.translations.build :locale => ::Refinery::I18n.default_frontend_locale
+      def ensure_locale
+        unless self.translations.present?
+          self.translations.build :locale => ::Refinery::I18n.default_frontend_locale
+        end
       end
-    end
 
-    def expire_page_caching
-      self.class.expire_page_caching
-    end
+      def expire_page_caching
+        self.class.expire_page_caching
+      end
   end
 end

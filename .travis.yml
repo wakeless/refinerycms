@@ -1,8 +1,8 @@
 before_script:
   - "ruby --version"
   - "sh -e /etc/init.d/xvfb start"
-  - "bundle exec rake db:create db:migrate"
-script: "DISPLAY=:99.0 bundle exec rspec ./**/spec"
+  - "bundle exec rake refinery:testing:dummy_app --quiet"
+script: "DISPLAY=:99.0 bundle exec rspec ./*/spec"
 notifications:
   email:
     - parndt@gmail.com
@@ -10,11 +10,11 @@ notifications:
   irc:
     - "irc.freenode.org#refinerycms"
 env:
-  - DB=postgres
+  - DB=postgresql
   - DB=mysql
 rvm:
   - 1.8.7
   - 1.9.2
   - 1.9.3
   - rbx
-#  - jruby
+  - jruby

@@ -1,5 +1,4 @@
-namespace :refinery do
-
+namespace :refinery do  
   desc "Override files for use in an application"
   task :override => :environment do
     require 'fileutils'
@@ -142,7 +141,7 @@ namespace :refinery do
       abort "#{controller_class_name} is not defined"
     end
 
-    crud_lines = Refinery.roots('core').join('lib', 'refinery', 'crud.rb').read
+    crud_lines = Refinery.roots(:'refinery/core').join('lib', 'refinery', 'crud.rb').read
     if (matches = crud_lines.scan(/(\ +)(def #{action}.+?protected)/m).first).present? and
        (method_lines = "#{matches.last.split(%r{^#{matches.first}end}).first.strip}\nend".split("\n")).many?
       indent = method_lines.second.index(%r{[^ ]})
@@ -161,31 +160,11 @@ namespace :refinery do
     end
   end
 
-  namespace :cache do
-    desc "Eliminate existing cache files for javascript and stylesheet resources in default directories"
-    task :clear => :environment do
-      FileUtils.rm(Dir[Rails.root.join("public", "javascripts", "cache", "[^.]*").cleanpath.to_s])
-      FileUtils.rm(Dir[Rails.root.join("public", "stylesheets", "cache", "[^.]*").cleanpath.to_s])
-    end
-  end
-
-end
-
-desc 'Removes trailing whitespace across the entire application.'
-task :whitespace do
-  require 'rbconfig'
-  if RbConfig::CONFIG['host_os'] =~ /linux/
-    sh %{find . -name '*.*rb' -exec sed -i 's/\t/  /g' {} \\; -exec sed -i 's/ *$//g' {} \\; }
-  elsif RbConfig::CONFIG['host_os'] =~ /darwin/
-    sh %{find . -name '*.*rb' -exec sed -i '' 's/\t/  /g' {} \\; -exec sed -i '' 's/ *$//g' {} \\; }
-  else
-    puts "This doesn't work on systems other than OSX or Linux. Please use a custom whitespace tool for your platform '#{RbConfig::CONFIG["host_os"]}'."
-  end
 end
 
 desc "Recalculate $LOAD_PATH frequencies."
 task :recalculate_loaded_features_frequency => :environment do
-  require 'load_path_analyzer'
+  require 'refinery/load_path_analyzer'
 
   frequencies     = LoadPathAnalyzer.new($LOAD_PATH, $LOADED_FEATURES).frequencies
   ideal_load_path = frequencies.to_a.sort_by(&:last).map(&:first)

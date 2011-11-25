@@ -15,17 +15,18 @@ def setup_simplecov
   end
 end
 
+ENGINE_RAILS_ROOT = File.join(File.dirname(__FILE__), '../') unless defined?(ENGINE_RAILS_ROOT)
+
 def setup_environment
   # Configure Rails Environment
   ENV["RAILS_ENV"] ||= 'test'
   # simplecov should be loaded _before_ models, controllers, etc are loaded.
   setup_simplecov unless ENV["SKIP_COV"] || !defined?(SimpleCov)
 
-  require File.expand_path("../../config/environment", __FILE__)
+  require File.expand_path("../dummy/config/environment", __FILE__)
 
   require 'rspec/rails'
   require 'capybara/rspec'
-  require 'factory_girl_rails'
 
   Rails.backtrace_cleaner.remove_silencers!
 
@@ -42,16 +43,14 @@ end
 
 def each_run
   FactoryGirl.reload
-  
+
   # Requires supporting files with custom matchers and macros, etc,
   # in ./support/ and its subdirectories including factories.
-  ([Rails.root] | ::Refinery::Plugins.registered.pathnames).map{|p|
-    Dir[p.join('spec', 'support', '**', '*.rb').to_s]
+  ([ENGINE_RAILS_ROOT, Rails.root.to_s].uniq | ::Refinery::Plugins.registered.pathnames).map{|p|
+    Dir[File.join(p, 'spec', 'support', '**', '*.rb').to_s]
   }.flatten.sort.each do |support_file|
     require support_file
   end
-  
-  require 'refinery/testing/factories'
 end
 
 # If spork is available in the Gemfile it'll be used but we don't force it.

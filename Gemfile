@@ -2,21 +2,6 @@ source 'http://rubygems.org'
 
 gemspec
 
-# Use unicorn as the web server
-# gem 'unicorn'
-# gem 'mongrel'
-
-# Deploy with Capistrano
-# gem 'capistrano'
-
-# To use debugger
-# gem 'ruby-debug', :platform => :mri_18
-# or in 1.9.x:
-# gem 'ruby-debug19', :platform => :mri_19
-
-# For Heroku/s3:
-# gem 'fog'
-
 # REFINERY CMS ================================================================
 # Anything you put in here will be overridden when the app gets updated.
 
@@ -26,7 +11,16 @@ gemspec
 
 # REFINERY CMS DEVELOPMENT ====================================================
 
-gem "rails", "= 3.1.1.rc2"
+# Database Configuration
+if defined? JRUBY_VERSION
+  gem 'activerecord-jdbcsqlite3-adapter',
+      :git => 'git://github.com/nicksieger/activerecord-jdbc-adapter.git'
+  gem 'jruby-openssl'
+else
+  gem 'sqlite3'
+  gem 'mysql2'
+  gem 'pg'
+end
 
 group :development do
   gem 'rails-dev-tweaks', '~> 0.5.0'
@@ -35,15 +29,17 @@ end
 gem 'routing-filter', :git => "https://github.com/nevir/routing-filter"
 
 group :development, :test do
-  gem 'refinerycms-testing',    '~> 2.0.0', :require => false
-  gem 'rcov', :platform => :mri_18
-  gem 'simplecov', :platform => :mri_19
-  gem 'capybara-webkit', '~> 0.6.1'
-  gem 'spork', '0.9.0.rc9', :platforms => :ruby
-  gem 'guard-spork', :platforms => :ruby
+  gem 'refinerycms-testing', '~> 2.0.0'
+  gem 'capybara-webkit', '~> 0.7.0'
   gem 'generator_spec'
 
-  require 'rbconfig'
+  platforms :mri_18 do
+    gem 'rcov'
+  end
+
+  platforms :mri_19 do
+    gem 'simplecov'
+  end
 
   platforms :mswin, :mingw do
     gem 'win32console'
@@ -52,10 +48,11 @@ group :development, :test do
   end
 
   platforms :ruby do
-    gem 'spork', '0.9.0.rc9'
+    gem 'spork', '~> 0.9.0.rc'
     gem 'guard-spork'
 
     unless ENV['TRAVIS']
+      require 'rbconfig'
       if RbConfig::CONFIG['target_os'] =~ /darwin/i
         gem 'rb-fsevent', '>= 0.3.9'
         gem 'growl',      '~> 1.0.3'
@@ -69,6 +66,7 @@ group :development, :test do
 
   platforms :jruby do
     unless ENV['TRAVIS']
+      require 'rbconfig'
       if RbConfig::CONFIG['target_os'] =~ /darwin/i
         gem 'growl',      '~> 1.0.3'
       end
@@ -78,20 +76,6 @@ group :development, :test do
       end
     end
   end
-end
-
-# Bundle edge Rails instead:
-# gem 'rails', :git => 'git://github.com/rails/rails.git', :branch => '3-1-stable'
-# gem 'rack', :git => 'git://github.com/rack/rack.git'
-# gem 'arel', :git => 'git://github.com/rails/arel.git'
-
-if defined? JRUBY_VERSION
-  gem 'activerecord-jdbcsqlite3-adapter',
-      :git => 'git://github.com/nicksieger/activerecord-jdbc-adapter.git'
-  gem 'jruby-openssl'
-else
-  gem 'sqlite3'
-  gem 'mysql2'
 end
 
 # Gems used only for assets and not required
@@ -117,3 +101,23 @@ gem 'jquery-rails'
 # Add i18n support (optional, you can remove this if you really want to).
 gem 'refinerycms-i18n',           '~> 2.0.0', :git => 'git://github.com/parndt/refinerycms-i18n'
 # END USER DEFINED
+
+# Use unicorn as the web server
+# gem 'unicorn'
+# gem 'mongrel'
+
+# Deploy with Capistrano
+# gem 'capistrano'
+
+# To use debugger
+# gem 'ruby-debug', :platform => :mri_18
+# or in 1.9.x:
+# gem 'ruby-debug19', :platform => :mri_19
+
+# For Heroku/s3:
+# gem 'fog'
+
+# Bundle edge Rails instead:
+# gem 'rails', :git => 'git://github.com/rails/rails.git', :branch => '3-1-stable'
+# gem 'rack', :git => 'git://github.com/rack/rack.git'
+# gem 'arel', :git => 'git://github.com/rails/arel.git'

@@ -1,10 +1,10 @@
-::Refinery::Application.routes.draw do
+Rails.application.routes.draw do
 
   # Add Devise necessary routes.
   # For Devise routes, see: https://github.com/plataformatec/devise
   scope(:module => 'refinery') do
     devise_for :refinery_user, :class_name => "::Refinery::User", :path => "refinery/users", :module => 'refinery', :controllers => {
-      :registrations => 'refinery/users', 
+      :registrations => 'refinery/users',
     },
     :skip => [:registrations],
     :path_names => {

@@ -38,20 +38,20 @@ module Refinery
 
     describe ".per_page" do
       context "dialog is true" do
-        it "returns resource count specified by Resources::Options.pages_per_dialog option" do
-          Resource.per_page(true).should == Resources::Options.pages_per_dialog
+        it "returns resource count specified by Resources.pages_per_dialog option" do
+          Resource.per_page(true).should == Resources.pages_per_dialog
         end
       end
 
       context "dialog is false" do
-        it "returns resource count specified by Resources::Options.pages_per_admin_index constant" do
-          Resource.per_page.should == Resources::Options.pages_per_admin_index
+        it "returns resource count specified by Resources.pages_per_admin_index constant" do
+          Resource.per_page.should == Resources.pages_per_admin_index
         end
       end
     end
 
     describe ".create_resources" do
-      let(:file) { Refinery.roots("testing").join("assets/refinery_is_awesome.txt") }
+      let(:file) { Refinery.roots(:'refinery/resources').join("spec/fixtures/refinery_is_awesome.txt") }
 
       context "only one resource uploaded" do
         it "returns an array containing one resource" do
@@ -75,8 +75,8 @@ module Refinery
     describe "validations" do
       describe "valid #file" do
         before(:each) do
-          @file = Refinery.roots("testing").join("assets/refinery_is_awesome.txt")
-          Resources::Options.max_file_size = (File.read(@file).size + 10)
+          @file = Refinery.roots(:'refinery/resources').join("spec/fixtures/refinery_is_awesome.txt")
+          Resources.max_file_size = (File.read(@file).size + 10)
         end
 
         it "should be valid when size does not exceed .max_file_size" do
@@ -86,8 +86,8 @@ module Refinery
 
       describe "invalid #file" do
         before(:each) do
-          @file = Refinery.roots("testing").join("assets/refinery_is_awesome.txt")
-          Resources::Options.max_file_size = (File.read(@file).size - 10)
+          @file = Refinery.roots(:'refinery/resources').join("spec/fixtures/refinery_is_awesome.txt")
+          Resources.max_file_size = (File.read(@file).size - 10)
           @resource = Resource.new(:file => @file)
         end
 
@@ -98,7 +98,7 @@ module Refinery
         it "should contain an error message" do
           @resource.valid?
           @resource.errors.should_not be_empty
-          @resource.errors[:file].should == ["File should be smaller than #{Resources::Options.max_file_size} bytes in size"]
+          @resource.errors[:file].should == ["File should be smaller than #{Resources.max_file_size} bytes in size"]
         end
       end
     end
