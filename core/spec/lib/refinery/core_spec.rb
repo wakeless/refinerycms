@@ -61,8 +61,8 @@ describe Refinery do
 
   describe "#validate_engine!" do
     context "with a valid engine" do
-      it "should return true" do
-        subject.send(:validate_engine!, Refinery::ValidEngine)
+      it "should return nil" do
+        subject.send(:validate_engine!, Refinery::ValidEngine).should be_nil
       end
     end
 
@@ -133,30 +133,6 @@ describe Refinery do
     it "returns false when Refinery::I18n.enabled? is false" do
       Refinery::I18n.stub(:enabled?).and_return(false)
       subject.i18n_enabled?.should == false
-    end
-  end
-end
-
-module Refinery
-  describe Core do
-    describe "#configure" do
-      it "should set configurable option" do
-        subject.configure do |config|
-          config.rescue_not_found = true
-        end
-
-        subject.rescue_not_found.should == true
-      end
-    end
-
-    describe ".reset!" do
-      it "should set rescue_not_found back to the default value" do
-        subject.rescue_not_found.should == subject::DEFAULT_RESCUE_NOT_FOUND
-        subject.rescue_not_found = !subject::DEFAULT_RESCUE_NOT_FOUND
-        subject.rescue_not_found.should_not == subject::DEFAULT_RESCUE_NOT_FOUND
-        subject.reset!
-        subject.rescue_not_found.should == subject::DEFAULT_RESCUE_NOT_FOUND
-      end
     end
   end
 end

@@ -29,12 +29,7 @@ module Refinery
       end
 
       it "should use right geometry when given a thumbnail name" do
-        ::Refinery::Setting.find_or_set(:user_image_sizes, {
-          :small => '110x110>',
-          :medium => '225x255>',
-          :large => '450x450>'
-        }, :destroyable => false)
-        name, geometry = ::Refinery::Image.user_image_sizes.first
+        name, geometry = Refinery::Images.config.user_image_sizes.first
         image.thumbnail(name).url.should == image.thumbnail(geometry).url
       end
     end
@@ -48,28 +43,28 @@ module Refinery
     describe ".per_page" do
       context "dialog is true" do
         context "has_size_options is true" do
-          it "returns image count specified by Images.pages_per_dialog_that_have_size_options option" do
-            ::Refinery::Image.per_page(true, true).should == Images.pages_per_dialog_that_have_size_options
+          it "returns image count specified by Images.config.pages_per_dialog_that_have_size_options option" do
+            ::Refinery::Image.per_page(true, true).should == Images.config.pages_per_dialog_that_have_size_options
           end
         end
 
         context "has_size_options is false" do
-          it "returns image count specified by Images.pages_per_dialog option" do
-            ::Refinery::Image.per_page(true).should == Images.pages_per_dialog
+          it "returns image count specified by Images.config.pages_per_dialog option" do
+            ::Refinery::Image.per_page(true).should == Images.config.pages_per_dialog
           end
         end
       end
 
       context "dialog is false" do
-        it "returns image count specified by Images.pages_per_admin_index option" do
-          ::Refinery::Image.per_page.should == Images.pages_per_admin_index
+        it "returns image count specified by Images.config.pages_per_admin_index option" do
+          ::Refinery::Image.per_page.should == Images.config.pages_per_admin_index
         end
       end
     end
 
     describe ".user_image_sizes" do
-      it "sets and returns a hash consisting of the keys contained in the ::Refinery::Setting" do
-        ::Refinery::Image.user_image_sizes.should == ::Refinery::Setting.get(:user_image_sizes)
+      it "returns a hash" do
+        Refinery::Images.config.user_image_sizes.should be_a_kind_of(Hash)
       end
     end
 
@@ -120,7 +115,7 @@ module Refinery
       describe "valid #image" do
         before(:each) do
           @file = Refinery.roots(:'refinery/images').join("spec/fixtures/beach.jpeg")
-          Images.max_image_size = (File.read(@file).size + 10.megabytes)
+          Images.config.max_image_size = (File.read(@file).size + 10.megabytes)
         end
 
         it "should be valid when size does not exceed .max_image_size" do
@@ -131,7 +126,7 @@ module Refinery
       describe "too large #image" do
         before(:each) do
           @file = Refinery.roots(:'refinery/images').join("spec/fixtures/beach.jpeg")
-          Images.max_image_size = 0
+          Images.config.max_image_size = 0
           @image = Image.new(:image => @file)
         end
 
@@ -142,7 +137,7 @@ module Refinery
         it "should contain an error message" do
           @image.valid?
           @image.errors.should_not be_empty
-          @image.errors[:image].should == ["Image should be smaller than #{Images.max_image_size} bytes in size"]
+          @image.errors[:image].should == ["Image should be smaller than #{Images.config.max_image_size} bytes in size"]
         end
       end
 

@@ -44,17 +44,17 @@ module Refinery
 
     # Convenience method for Refinery::Core#rescue_not_found
     def rescue_not_found
-      Core.rescue_not_found
+      Core.config.rescue_not_found
     end
 
     # Convenience method for Refinery::Core#s3_backend
     def s3_backend
-      Core.s3_backend
+      Core.config.s3_backend
     end
 
     # Convenience method for Refinery::Core#base_cache_key
     def base_cache_key
-      Core.base_cache_key
+      Core.config.base_cache_key
     end
 
     # Returns an array of modules representing currently registered Refinery Engines
@@ -149,9 +149,7 @@ module Refinery
     #   Refinery.roots(:'refinery/core')  =>  #<Pathname:/Users/Reset/Code/refinerycms/core>
     #   Refinery.roots("refinery/core")   =>  #<Pathname:/Users/Reset/Code/refinerycms/core>
     def roots(engine_name = nil)
-      if engine_name.nil?
-        return @roots ||= self.engines.map { |engine| engine.root }
-      end
+      return @roots ||= self.engines.map { |engine| engine.root } if engine_name.nil?
 
       engine_name.to_s.camelize.constantize.root
     end
@@ -171,38 +169,22 @@ module Refinery
   module Core
     require 'refinery/core/engine' if defined?(Rails)
 
-    DEFAULT_RESCUE_NOT_FOUND = false
-    DEFAULT_S3_BACKEND = false
-    DEFAULT_BASE_CACHE_KEY = :refinery
+    include ActiveSupport::Configurable
 
-    mattr_accessor :rescue_not_found
-    self.rescue_not_found = DEFAULT_RESCUE_NOT_FOUND
+    config_accessor :rescue_not_found, :s3_backend, :base_cache_key, :site_name,
+                    :google_analytics_page_code, :authenticity_token_on_frontend,
+                    :menu_hide_children, :dragonfly_secret
 
-    mattr_accessor :s3_backend
-    self.s3_backend = DEFAULT_S3_BACKEND
-
-    mattr_accessor :base_cache_key
-    self.base_cache_key = DEFAULT_BASE_CACHE_KEY
+    self.rescue_not_found = false
+    self.s3_backend = false
+    self.base_cache_key = :refinery
+    self.site_name = "Company Name"
+    self.google_analytics_page_code = "UA-xxxxxx-x"
+    self.authenticity_token_on_frontend = true
+    self.menu_hide_children = false
+    self.dragonfly_secret = Array.new(24) { rand(256) }.pack('C*').unpack('H*').first
 
     class << self
-      # Configure the options of Refinery::Core.
-      #
-      #   Refinery::Core.configure do |config|
-      #     config.rescue_not_found = false
-      #   end
-      #
-      def configure(&block)
-        yield Refinery::Core
-      end
-
-      # Reset Refinery::Core options to their default values
-      #
-      def reset!
-        self.rescue_not_found = DEFAULT_RESCUE_NOT_FOUND
-        self.s3_backend = DEFAULT_S3_BACKEND
-        self.base_cache_key = DEFAULT_BASE_CACHE_KEY
-      end
-
       def root
         @root ||= Pathname.new(File.expand_path('../../../', __FILE__))
       end

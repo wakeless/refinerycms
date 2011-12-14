@@ -24,15 +24,15 @@ module Refinery
 
     # Docs for acts_as_nested_set https://github.com/collectiveidea/awesome_nested_set
     # rather than :delete_all we want :destroy
-    unless $rake_assets_precompiling
+    unless ENV['RAILS_ASSETS_PRECOMPILE']
       acts_as_nested_set :dependent => :destroy
 
       # Docs for friendly_id http://github.com/norman/friendly_id
       has_friendly_id :custom_slug_or_title, :use_slug => true,
                       :default_locale => (::Refinery::I18n.default_frontend_locale rescue :en),
                       :reserved_words => %w(index new session login logout users refinery admin images wymiframe),
-                      :approximate_ascii => ::Refinery::Setting.find_or_set(:approximate_ascii, false, :scoping => "pages"),
-                      :strip_non_ascii => ::Refinery::Setting.find_or_set(:strip_non_ascii, false, :scoping => "pages")
+                      :approximate_ascii => Refinery::Pages.config.approximate_ascii,
+                      :strip_non_ascii => Refinery::Pages.config.strip_non_ascii
     end
 
     # Docs for acts_as_indexed http://github.com/dougal/acts_as_indexed
@@ -103,11 +103,6 @@ module Refinery
         joins(:translations).where(globalized_conditions).where(conditions).readonly(false)
       end
 
-      # Accessor to find out the default page parts created for each new page
-      def default_parts
-        ::Refinery::Setting.find_or_set(:default_page_parts, ["Body", "Side Body"])
-      end
-
       # Wraps up all the checks that we need to do to figure out whether
       # the current frontend locale is different to the current one set by ::I18n.locale.
       # This terminates in a false if i18n engine is not defined or enabled.
@@ -123,7 +118,7 @@ module Refinery
 
       # Returns how many pages per page should there be when paginating pages
       def per_page(dialog = false)
-        dialog ? Pages.pages_per_dialog : Pages.pages_per_admin_index
+        dialog ? Pages.config.pages_per_dialog : Pages.config.pages_per_admin_index
       end
 
       def expire_page_caching
@@ -158,7 +153,7 @@ module Refinery
     # Repositions the child page_parts that belong to this page.
     # This ensures that they are in the correct 0,1,2,3,4... etc order.
     def reposition_parts!
-      parts.each_with_index do |part, index|
+      reload.parts.each_with_index do |part, index|
         part.update_attribute(:position, index)
       end
     end
@@ -213,7 +208,7 @@ module Refinery
     def url
       if link_url.present?
         link_url_localised?
-      elsif ::Refinery::Pages.use_marketable_urls?
+      elsif Refinery::Pages.config.marketable_urls
         with_locale_param url_marketable
       elsif to_param.present?
         with_locale_param url_normal
@@ -379,7 +374,7 @@ module Refinery
     def normalize_friendly_id(slug_string)
       slug_string.gsub!('_', '-')
       sluggified = super
-      if ::Refinery::Pages.use_marketable_urls? && self.class.friendly_id_config.reserved_words.include?(sluggified)
+      if Refinery::Pages.config.marketable_urls && self.class.friendly_id_config.reserved_words.include?(sluggified)
         sluggified << "-page"
       end
       sluggified
@@ -388,7 +383,7 @@ module Refinery
     private
 
       def invalidate_cached_urls
-        return true unless ::Refinery::Pages.use_marketable_urls?
+        return true unless Refinery::Pages.config.marketable_urls
 
         [self, children].flatten.each do |page|
           Rails.cache.delete(page.url_cache_key)
