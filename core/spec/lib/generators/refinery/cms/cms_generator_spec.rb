@@ -9,7 +9,7 @@ module Refinery
 
     before(:each) do
       prepare_destination
-      run_generator
+      run_generator %w[--skip-db --skip-migrations]
     end
 
     specify do
@@ -32,9 +32,6 @@ module Refinery
               file "index.xml.builder"
             end
           end
-        end
-        directory "db" do
-          file "seeds.rb"
         end
         directory "config" do
           file "database.yml.mysql"

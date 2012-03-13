@@ -1,5 +1,5 @@
 module Refinery
-  class Image < ActiveRecord::Base
+  class Image < Refinery::Core::BaseModel
     include Images::Validators
 
     image_accessor :image
@@ -22,20 +22,20 @@ module Refinery
       def per_page(dialog = false, has_size_options = false)
         if dialog
           unless has_size_options
-            Images.config.pages_per_dialog
+            Images.pages_per_dialog
           else
-            Images.config.pages_per_dialog_that_have_size_options
+            Images.pages_per_dialog_that_have_size_options
           end
         else
-          Images.config.pages_per_admin_index
+          Images.pages_per_admin_index
         end
       end
     end
 
     # Get a thumbnail job object given a geometry.
     def thumbnail(geometry = nil)
-      if geometry.is_a?(Symbol) and Refinery::Images.config.user_image_sizes.keys.include?(geometry)
-        geometry = Refinery::Images.config.user_image_sizes[geometry]
+      if geometry.is_a?(Symbol) and Refinery::Images.user_image_sizes.keys.include?(geometry)
+        geometry = Refinery::Images.user_image_sizes[geometry]
       end
 
       if geometry.present? && !geometry.is_a?(Symbol)

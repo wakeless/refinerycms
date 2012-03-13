@@ -1,20 +1,23 @@
-before_install: gem install bundler --pre
+before_install:
+  - gem install bundler
 before_script:
   - "sh -e /etc/init.d/xvfb start"
   - "bundle exec rake refinery:testing:dummy_app > /dev/null"
-script: "DISPLAY=:99.0 bundle exec rspec ./*/spec"
+script:
+  - "JS=false bundle exec rspec ./*/spec"
+  - "DISPLAY=:99.0 JS=true bundle exec rspec ./*/spec"
 notifications:
-  email:
-    - parndt@gmail.com
-    - ugis.ozolss@gmail.com
+  email: true
   irc:
-    - "irc.freenode.org#refinerycms"
+    use_notice: true
+    skip_join: true
+    channels:
+      - "irc.freenode.org#refinerycms"
 env:
   - DB=postgresql
   - DB=mysql
 rvm:
   - 1.8.7
-  - 1.9.2
   - 1.9.3
   - rbx
   - jruby

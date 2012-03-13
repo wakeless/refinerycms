@@ -1,16 +1,14 @@
-require 'refinerycms-core'
-require 'rails'
-
 module Refinery
   module Core
     class Engine < ::Rails::Engine
       include Refinery::Engine
 
       isolate_namespace Refinery
-      engine_name :refinery_core
+      engine_name :refinery
 
       class << self
-        # Require/load (based on Rails app.config) all decorators from app/decorators/ and vendor/engines/*
+        # Require/load (based on Rails app.config) all decorators from app/decorators/
+        # and from registered plugins' paths too.
         def load_decorators
           [Rails.root, Refinery::Plugins.registered.pathnames].flatten.map { |p|
             Dir[p.join('app', 'decorators', '**', '*_decorator.rb')]
@@ -31,6 +29,10 @@ module Refinery
             c.send :helper, Refinery::Core::Engine.helpers
           end
 
+          [Refinery::UsersController, Refinery::SessionsController, Refinery::PasswordsController].each do |c|
+            c.send :helper, Refinery::Core::Engine.helpers
+          end
+
           Refinery::AdminController.send :include, Refinery::Admin::BaseController
 
           after_inclusion_procs.each(&:call)
@@ -38,6 +40,10 @@ module Refinery
       end
 
       config.autoload_paths += %W( #{config.root}/lib )
+
+      # We can't reload the base class because otherwise in development mode
+      # we lose any configuration that is applied to it like macros for Dragonfly.
+      config.autoload_once_paths += %W( #{config.root}/app/models/refinery/core )
 
       # Include the refinery controllers and helpers dynamically
       config.to_prepare &method(:refinery_inclusion!).to_proc
@@ -55,7 +61,7 @@ module Refinery
         WillPaginate.per_page = 20
       end
 
-      initializer "register refinery_core plugin", :after => :set_routes_reloader do |app|
+      initializer "register refinery_core plugin" do
         Refinery::Plugin.register do |plugin|
           plugin.pathname = root
           plugin.name = 'refinery_core'
@@ -67,7 +73,7 @@ module Refinery
         end
       end
 
-      initializer "register refinery_dialogs plugin", :after => :set_routes_reloader do |app|
+      initializer "register refinery_dialogs plugin" do
         Refinery::Plugin.register do |plugin|
           plugin.pathname = root
           plugin.name = 'refinery_dialogs'
@@ -76,10 +82,6 @@ module Refinery
           plugin.always_allow_access = true
           plugin.menu_match = /refinery\/(refinery_)?dialogs/
         end
-      end
-
-      initializer "refinery.configuration" do |app|
-        app.config.refinery = Refinery::Configuration.new
       end
 
       initializer "refinery.routes" do |app|
@@ -134,7 +136,17 @@ module Refinery
       end
 
       config.after_initialize do
-        Refinery.register_engine(Refinery::Core)
+        Refinery.register_extension(Refinery::Core)
+      end
+
+      # We need to reload the routes here due to how Refinery sets them up
+      # The different facets of Refinery (dashboard, pages, etc.) append/prepend routes to Core
+      # *after* Core has been loaded.
+      #
+      # So we wait until after initialization is complete to do one final reload
+      # This then makes the appended/prepended routes available to the application.
+      config.after_initialize do
+        Rails.application.routes_reloader.reload!
       end
     end
   end

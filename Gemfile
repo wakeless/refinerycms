@@ -2,14 +2,8 @@ source 'http://rubygems.org'
 
 gemspec
 
-# REFINERY CMS ================================================================
-# Anything you put in here will be overridden when the app gets updated.
-
-# gem 'refinerycms', '~> 2.0.0'
-
-# END REFINERY CMS ============================================================
-
-# REFINERY CMS DEVELOPMENT ====================================================
+# Add i18n support.
+gem 'refinerycms-i18n', '~> 2.1.0.dev', :git => 'git://github.com/parndt/refinerycms-i18n.git'
 
 # Database Configuration
 platforms :jruby do
@@ -19,31 +13,17 @@ platforms :jruby do
   gem 'jruby-openssl'
 end
 
-unless defined?(JRUBY_VERSION)
+platforms :ruby do
   gem 'sqlite3'
   gem 'mysql2'
   gem 'pg'
 end
 
-group :development do
-  gem 'rails-dev-tweaks', '~> 0.5.2'
-  # see https://github.com/wavii/rails-dev-tweaks/issues/3
-  gem 'routing-filter', :git => 'git://github.com/nevir/routing-filter.git'
-end
-
 group :development, :test do
-  gem 'refinerycms-testing', '~> 2.0.0'
-  gem 'capybara-webkit', '~> 0.7.0'
-  gem 'generator_spec'
-  gem 'database_cleaner', :git => 'git://github.com/bmabey/database_cleaner.git'
-
-  platforms :mri_18 do
-    gem 'rcov'
-  end
-
-  platforms :mri_19 do
-    gem 'simplecov'
-  end
+  gem 'refinerycms-testing', '~> 2.1.0.dev'
+  gem 'generator_spec', '>= 0.8.5'
+  gem 'guard-rspec', '~> 0.6.0'
+  gem 'fuubar'
 
   platforms :mswin, :mingw do
     gem 'win32console'
@@ -59,7 +39,7 @@ group :development, :test do
       require 'rbconfig'
       if RbConfig::CONFIG['target_os'] =~ /darwin/i
         gem 'rb-fsevent', '>= 0.3.9'
-        gem 'growl',      '~> 1.0.3'
+        gem 'ruby_gntp'
       end
       if RbConfig::CONFIG['target_os'] =~ /linux/i
         gem 'rb-inotify', '>= 0.5.1'
@@ -73,7 +53,7 @@ group :development, :test do
     unless ENV['TRAVIS']
       require 'rbconfig'
       if RbConfig::CONFIG['target_os'] =~ /darwin/i
-        gem 'growl',      '~> 1.0.3'
+        gem 'ruby_gntp'
       end
       if RbConfig::CONFIG['target_os'] =~ /linux/i
         gem 'rb-inotify', '>= 0.5.1'
@@ -86,26 +66,12 @@ end
 # Gems used only for assets and not required
 # in production environments by default.
 group :assets do
-  gem 'sass-rails', '~> 3.1.0'
-  gem 'coffee-rails', '~> 3.1.0'
+  gem 'sass-rails'
+  gem 'coffee-rails'
   gem 'uglifier'
 end
 
-gem 'jquery-rails'
-
-# END REFINERY CMS DEVELOPMENT ================================================
-
-# USER DEFINED
-
-# Specify additional Refinery CMS Engines here (all optional):
-# gem 'refinerycms-inquiries',    '~> 1.0'
-# gem "refinerycms-news",         '~> 1.2'
-# gem 'refinerycms-blog',         '~> 1.6'
-# gem 'refinerycms-page-images',  '~> 1.0'
-
-# Add i18n support (optional, you can remove this if you really want to).
-gem 'refinerycms-i18n',           '~> 2.0.0', :git => 'git://github.com/parndt/refinerycms-i18n.git'
-# END USER DEFINED
+gem 'jquery-rails', '~> 2.0.0'
 
 # Use unicorn as the web server
 # gem 'unicorn'

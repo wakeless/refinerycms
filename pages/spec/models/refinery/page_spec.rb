@@ -3,21 +3,27 @@ require 'spec_helper'
 module Refinery
   describe Page do
 
-    let(:page) {
-      subject.class.create!(:title => 'RSpec is great for testing too', :deletable => true)
-    }
-    let(:child) { page.children.create(:title => 'The child page') }
+    let(:page_title) { 'RSpec is great for testing too' }
+    let(:child_title) { 'The child page' }
+
+    # For when we do not need the page persisted.
+    let(:page) { subject.class.new(:title => page_title, :deletable => true)}
+    let(:child) { page.children.new(:title => child_title) }
+
+    # For when we need the page persisted.
+    let(:created_page) { subject.class.create!(:title => page_title, :deletable => true) }
+    let(:created_child) { created_page.children.create!(:title => child_title) }
 
     def page_cannot_be_destroyed
       page.destroy.should == false
     end
 
     def turn_off_marketable_urls
-      Refinery::Pages.config.stub(:marketable_urls).and_return(false)
+      Refinery::Pages.stub(:marketable_urls).and_return(false)
     end
 
     def turn_on_marketable_urls
-      Refinery::Pages.config.stub(:marketable_urls).and_return(true)
+      Refinery::Pages.stub(:marketable_urls).and_return(true)
     end
 
     context 'cannot be deleted under certain rules' do
@@ -32,7 +38,7 @@ module Refinery
       end
 
       it 'if menu_match is present' do
-        page.menu_match = '^/RSpec is great for testing too.*$'
+        page.menu_match = "^/#{page_title}*$"
         page_cannot_be_destroyed
       end
 
@@ -44,16 +50,18 @@ module Refinery
     end
 
     context 'page urls' do
+      let(:page_path) { 'rspec-is-great-for-testing-too' }
+      let(:child_path) { 'the-child-page' }
       it 'return a full path' do
-        page.path.should == 'RSpec is great for testing too'
+        page.path.should == page_title
       end
 
       it 'and all of its parent page titles, reversed' do
-        child.path.should == 'RSpec is great for testing too - The child page'
+        created_child.path.should == [page_title, child_title].join(' - ')
       end
 
       it 'or normally ;-)' do
-        child.path(:reversed => false).should == 'The child page - RSpec is great for testing too'
+        created_child.path(:reversed => false).should == [child_title, page_title].join(' - ')
       end
 
       it 'returns its url' do
@@ -62,31 +70,31 @@ module Refinery
       end
 
       it 'returns its path with marketable urls' do
-        page.url[:id].should be_nil
-        page.url[:path].should == ['rspec-is-great-for-testing-too']
+        created_page.url[:id].should be_nil
+        created_page.url[:path].should == [page_path]
       end
 
       it 'returns its path underneath its parent with marketable urls' do
-        child.url[:id].should be_nil
-        child.url[:path].should == [page.url[:path].first, 'the-child-page']
+        created_child.url[:id].should be_nil
+        created_child.url[:path].should == [created_page.url[:path].first, child_path]
       end
 
       it 'no path parameter without marketable urls' do
         turn_off_marketable_urls
-        page.url[:path].should be_nil
-        page.url[:id].should == 'rspec-is-great-for-testing-too'
+        created_page.url[:path].should be_nil
+        created_page.url[:id].should == page_path
         turn_on_marketable_urls
       end
 
       it "doesn't mention its parent without marketable urls" do
         turn_off_marketable_urls
-        child.url[:id].should == 'the-child-page'
-        child.url[:path].should be_nil
+        created_child.url[:id].should == child_path
+        created_child.url[:path].should be_nil
         turn_on_marketable_urls
       end
 
       it 'returns its path with slug set by menu_title' do
-        page.menu_title = 'Rspec is great'
+        page.menu_title = 'RSpec is great'
         page.save
         page.reload
 
@@ -96,46 +104,54 @@ module Refinery
     end
 
     context 'custom slugs' do
+      let(:custom_page_slug) { 'custom-page-slug' }
+      let(:custom_child_slug) { 'custom-child-slug' }
       let(:page_with_custom_slug) {
-        subject.class.create!(:title => 'RSpec is great for testing too', :custom_slug => 'custom-page-slug')
+        subject.class.new(:title => page_title, :custom_slug => custom_page_slug)
       }
-      let(:child_with_custom_slug) { page.children.create(:title => 'The child page', :custom_slug => 'custom-child-slug') }
+      let(:child_with_custom_slug) {
+        page.children.new(:title => child_title, :custom_slug => custom_child_slug)
+      }
 
       after(:each) do
-        ::Refinery::I18n.config.current_frontend_locale = Refinery::I18n.config.default_frontend_locale
-        ::Refinery::I18n.config.current_locale = Refinery::I18n.config.default_locale
+        ::Refinery::I18n.stub(:current_frontend_locale).and_return(Refinery::I18n.default_frontend_locale)
+        ::Refinery::I18n.current_locale = Refinery::I18n.default_locale
       end
 
       it 'returns its path with custom slug' do
+        page_with_custom_slug.save
         page_with_custom_slug.url[:id].should be_nil
-        page_with_custom_slug.url[:path].should == ['custom-page-slug']
+        page_with_custom_slug.url[:path].should == [custom_page_slug]
       end
 
       it 'returns its path underneath its parent with custom urls' do
+        child_with_custom_slug.save
+        page.save
+
         child_with_custom_slug.url[:id].should be_nil
-        child_with_custom_slug.url[:path].should == [page.url[:path].first, 'custom-child-slug']
+        child_with_custom_slug.url[:path].should == [page.url[:path].first, custom_child_slug]
       end
 
       it 'returns its path with custom slug when using different locale' do
-        ::Refinery::I18n.config.current_frontend_locale = :ru
-        ::Refinery::I18n.config.current_locale = :ru
-        page_with_custom_slug.custom_slug = 'custom-page-slug-ru'
+        ::Refinery::I18n.stub(:current_frontend_locale).and_return(:ru)
+        ::Refinery::I18n.current_locale = :ru
+        page_with_custom_slug.custom_slug = "#{custom_page_slug}-ru"
         page_with_custom_slug.save
         page_with_custom_slug.reload
 
         page_with_custom_slug.url[:id].should be_nil
-        page_with_custom_slug.url[:path].should == ['custom-page-slug-ru']
+        page_with_custom_slug.url[:path].should == ["#{custom_page_slug}-ru"]
       end
 
       it 'returns path underneath its parent with custom urls when using different locale' do
-        ::Refinery::I18n.config.current_frontend_locale = :ru
-        ::Refinery::I18n.config.current_locale = :ru
-        child_with_custom_slug.custom_slug = 'custom-child-slug-ru'
+        ::Refinery::I18n.stub(:current_frontend_locale).and_return(:ru)
+        ::Refinery::I18n.current_locale = :ru
+        child_with_custom_slug.custom_slug = "#{custom_child_slug}-ru"
         child_with_custom_slug.save
         child_with_custom_slug.reload
 
         child_with_custom_slug.url[:id].should be_nil
-        child_with_custom_slug.url[:path].should == [page.url[:path].first, 'custom-child-slug-ru']
+        child_with_custom_slug.url[:path].should == [page.url[:path].first, "#{custom_child_slug}-ru"]
       end
 
     end
@@ -153,9 +169,8 @@ module Refinery
 
     context 'content sections (page parts)' do
       before do
-        page.parts.create(:title => 'body', :content => "I'm the first page part for this page.", :position => 0)
-        page.parts.create(:title => 'side body', :content => 'Closely followed by the second page part.', :position => 1)
-        page.parts.reload
+        page.parts.new(:title => 'body', :content => "I'm the first page part for this page.", :position => 0)
+        page.parts.new(:title => 'side body', :content => 'Closely followed by the second page part.', :position => 1)
       end
 
       it 'return the content when using content_for' do
@@ -168,6 +183,8 @@ module Refinery
       end
 
       it 'reposition correctly' do
+        page.save
+
         page.parts.first.update_attribute(:position, 6)
         page.parts.last.update_attribute(:position, 4)
 
@@ -278,7 +295,6 @@ module Refinery
         Refinery::Page.new(
           :id => 5,
           :parent_id => 8,
-          :url => "/foo",
           :menu_match => "^/foo$"
 
         # Refinery::Page does not allow setting lft and rgt, so stub them.
@@ -310,7 +326,7 @@ module Refinery
 
       context "with #page_menu_title" do
         before do
-          page[:page_menu_title] = "Page Menu Title"
+          page.page_menu_title = "Page Menu Title"
         end
 
         it_should_behave_like "Refinery menu item hash"
@@ -322,7 +338,7 @@ module Refinery
 
       context "with #page_title" do
         before do
-          page[:page_title] = "Page Title"
+          page.page_title = "Page Title"
         end
 
         it_should_behave_like "Refinery menu item hash"
@@ -353,6 +369,44 @@ module Refinery
 
         it "returns the title for :title" do
           subject[:title].should eq("Title")
+        end
+      end
+    end
+
+    describe ".in_menu?" do
+      context "when live? and show_in_menu? returns true" do
+        it "returns true" do
+          page.stub(:live?).and_return(true)
+          page.stub(:show_in_menu?).and_return(true)
+          page.in_menu?.should be_true
+        end
+      end
+
+      context "when live? or show_in_menu? doesn't return true" do
+        it "returns false" do
+          page.stub(:live?).and_return(true)
+          page.stub(:show_in_menu?).and_return(false)
+          page.in_menu?.should be_false
+
+          page.stub(:live?).and_return(false)
+          page.stub(:show_in_menu?).and_return(true)
+          page.in_menu?.should be_false
+        end
+      end
+    end
+
+    describe ".not_in_menu?" do
+      context "when in_menu? returns true" do
+        it "returns false" do
+          page.stub(:in_menu?).and_return(true)
+          page.not_in_menu?.should be_false
+        end
+      end
+
+      context "when in_menu? returns false" do
+        it "returns true" do
+          page.stub(:in_menu?).and_return(false)
+          page.not_in_menu?.should be_true
         end
       end
     end

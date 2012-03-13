@@ -2,30 +2,24 @@ module Refinery
   module Testing
     module RequestMacros
       module Authentication
-        def login_refinery_user
-          before(:each) do
-            FactoryGirl.create(:refinery_user, :username => "refinerycms",
-                                    :password => "123456",
-                                    :password_confirmation => "123456",
-                                    :email => "refinerycms@refinerycms.com")
-            visit new_refinery_user_session_path
-            fill_in "Login", :with => "refinerycms"
-            fill_in "Password", :with => "123456"
-            click_button "Sign in"
+        def login_with(factory)
+          let!(:logged_in_user) { Factory.create(factory) }
+
+          before do
+            login_as logged_in_user, :scope => :refinery_user
           end
         end
 
-        def login_refinery_translator
-          before(:each) do
-            FactoryGirl.create(:refinery_user)
-            user = FactoryGirl.create(:refinery_translator, :password => "123456",
-                                      :password_confirmation => "123456")
+        def login_refinery_user
+          login_with(:refinery_user)
+        end
 
-            visit new_refinery_user_session_path
-            fill_in "Login", :with => user.username
-            fill_in "Password", :with => "123456"
-            click_button "Sign in"
-          end
+        def login_refinery_superuser
+          login_with(:refinery_superuser)
+        end
+
+        def login_refinery_translator
+          login_with(:refinery_translator)
         end
       end
     end

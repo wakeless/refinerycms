@@ -9,9 +9,6 @@ cs:
         description: Refinery dialogs plugin
     welcome:
       there_are_no_users: Nemáme žádné uživatele, proto nyní jednoho vytvoříme.
-      remember_admin_location: "Zapamatujte si adresu k Refinery administraci:"
-      lets_start: Nejdříve vytvoříme uživatelský účet, ať se máme jak přihlásit...
-      continue: Pokračovat...
     crudify:
       created: '%{what} byl úspěšně vytvořen.'
       updated: '%{what} byl úspěšně aktualizován.'
@@ -40,7 +37,7 @@ cs:
         close: Zavřít
       image_picker:
         none_selected: Zatím není vybrán žádný %{what}, klikněte zde pro přidání.
-        remove_current: Zmazat vybraný %{what}
+        remove_current: Smazat vybraný %{what}
         change: Klikněte zde pro vybrání obrázku
         show: Zobrazit
       resource_picker:

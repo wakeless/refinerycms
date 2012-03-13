@@ -1,8 +1,6 @@
-Rails.application.routes.draw do
-  scope(:path => 'refinery', :as => 'refinery_admin', :module => 'refinery/admin') do
-    match 'dashboard',
-          :to => 'dashboard#index',
-          :as => :dashboard
+Refinery::Core::Engine.routes.prepend do
+  namespace :admin, :path => 'refinery' do
+    get 'dashboard', :to => 'dashboard#index', :as => :dashboard
 
     match 'disable_upgrade_message',
           :to => 'dashboard#disable_upgrade_message',

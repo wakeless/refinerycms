@@ -1,28 +1,26 @@
-require 'refinerycms-<%= plural_name %>'
-
 module Refinery
-  module <%= class_name.pluralize %>
+  module <%= namespacing %>
     class Engine < Rails::Engine
       include Refinery::Engine
-      isolate_namespace Refinery
-      engine_name :refinery_<%= plural_name %>
+      isolate_namespace Refinery::<%= namespacing %>
 
-      initializer "register refinerycms_<%= plural_name %> plugin" do |app|
+      engine_name :refinery_<%= extension_plural_name %>
+
+      initializer "register refinerycms_<%= plural_name %> plugin" do
         Refinery::Plugin.register do |plugin|
-          plugin.name = "<%= class_name.pluralize.underscore.downcase %>"
-          plugin.url = {:controller => '/refinery/<%= plural_name %>'}
+          plugin.name = "<%= plural_name %>"
+          plugin.url = proc { Refinery::Core::Engine.routes.url_helpers.<%= namespacing.underscore %>_admin_<%= plural_name %>_path }
           plugin.pathname = root
-          plugin.name = '<%= class_name.pluralize.underscore.downcase %>'
-          plugin.url = '/refinery/<%= plural_name %>'
-
           plugin.activity = {
-            :class_name => :'refinery/<%= singular_name %>'
+            :class_name => :'refinery/<%= namespacing.underscore %>/<%= singular_name %>'<% if (title = attributes.detect { |a| a.type.to_s == "string" }).present? and title.name != 'title' %>,
+            :title => '<%= title.name %>'<% end %>
           }
+          <% unless namespacing.underscore == plural_name -%>plugin.menu_match = %r{refinery/<%= namespacing.underscore %>/<%= plural_name %>(/.*)?$}<% end %>
         end
       end
 
       config.after_initialize do
-        Refinery.register_engine(Refinery::<%= class_name.pluralize %>)
+        Refinery.register_extension(Refinery::<%= class_name.pluralize %>)
       end
     end
   end
