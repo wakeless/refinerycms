@@ -27,8 +27,8 @@ Gem::Specification.new do |s|
   s.add_dependency 'rails',                       ['>= 3.1.3', '< 3.3']
   s.add_dependency 'truncate_html',               '~> 0.5'
   s.add_dependency 'will_paginate',               '~> 3.0.2'
-  s.add_dependency 'sass-rails',                  '~> 3.2.3'
-  s.add_dependency 'coffee-rails',                '~> 3.2.1'
+  s.add_dependency 'sass-rails',                  '~> 3.1.6'
+  s.add_dependency 'coffee-rails',                '~> 3.1.0'
   s.add_dependency 'uglifier',                    '>= 1.0.3'
-  s.add_dependency 'jquery-rails',                '~> 2.0.0'
+  s.add_dependency 'jquery-rails',                '~> 1.0.0'
 end
